@@ -1,25 +1,29 @@
-name: My First GitHub Actions
+name: Deploy to k8s
 
-on: [push]
+on:
+  push:
+    branches:
+      - main
+
+env:
+  KUBECONFIG: ${{ secrets.KUBECONFIG }}
 
 jobs:
-  build:
-    runs-on: self-hosted
-
+  deploy:
+    runs-on: kubernetes
     steps:
-    - uses: actions/checkout@v3
-    - name: Set up Python
-      uses: actions/setup-python@v2
+    - name: Checkout code
+      uses: actions/checkout@v2
+
+    - name: Create Docker Image
+      uses: docker/build-push-action@v2
       with:
-        python-version: ${{ matrix.python-version }}
+        context: .
+        push: true
 
-    - name: Install dependencies
-      run: |
-        sudo apt install python3-pip
-        python3 -m pip install --upgrade pip
-        pip install pytest
-
-    - name: Run tests
-      run: |
-        cd src
-        python -m pytest addition.py
+    - name: Deploy to k8s
+      uses: appleboy/kubectl-action@v1.0.0
+      with:
+        args: apply -f deployment.yaml
+        env:
+          KUBECONFIG: ${{ env.KUBECONFIG }}
